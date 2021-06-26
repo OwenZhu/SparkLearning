@@ -9,21 +9,18 @@ object SparkWordCount {
     val sparkConfig = new SparkConf().setMaster("local").setAppName("WordCount")
     val sc = new SparkContext(sparkConfig)
 
-    // Tokenization
     val lines: RDD[String] = sc.textFile("data")
     val words: RDD[String] = lines.flatMap(_.split(" "))
+    val wordsProcessed: RDD[(String, Int)] = words.map(
+      word => (
+        word.toLowerCase().replaceAll("[^A-Za-z0-9]", ""),
+        1
+      )
+    )
+    val wordGroup: RDD[(String, Int)] = wordsProcessed.reduceByKey(_+_)
+    val wordGroupSorted = wordGroup.sortBy(_._2)
 
-    // Group By Words
-    val wordGroup: RDD[(String, Iterable[String])] = words.groupBy(word => word)
-
-    // Transform to Word Count
-    val wordToCount = wordGroup.map {
-      case (word, list) => (word, list.size)
-    }
-
-    val array: Array[(String, Int)] = wordToCount.collect()
-    array.foreach(println)
-
+    wordGroupSorted.saveAsTextFile("output")
     sc.stop()
   }
 }
